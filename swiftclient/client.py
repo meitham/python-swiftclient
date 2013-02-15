@@ -203,11 +203,13 @@ def http_connection(url, proxy=None):
     return parsed, conn
 
 
-def get_auth_1_0(url, user, key, snet):
+def get_auth_1_0(url, user, key, snet,
+                auth_header_user='X-Auth-User',
+                auth_header_key='X-Auth-Key'):
     parsed, conn = http_connection(url)
     method = 'GET'
     conn.request(method, parsed.path, '',
-                 {'X-Auth-User': user, 'X-Auth-Key': key})
+                 {auth_header_user: user, auth_header_key: key})
     resp = conn.getresponse()
     body = resp.read()
     url = resp.getheader('x-storage-url')
@@ -294,7 +296,9 @@ def get_auth(auth_url, user, key, **kwargs):
         return get_auth_1_0(auth_url,
                             user,
                             key,
-                            kwargs.get('snet'))
+                            kwargs.get('snet'),
+                            kwargs.get('auth_header_user'),
+                            kwargs.get('auth_header_key'))
 
     if auth_version in ['2.0', '2', 2]:
 
@@ -943,7 +947,9 @@ class Connection(object):
     def __init__(self, authurl=None, user=None, key=None, retries=5,
                  preauthurl=None, preauthtoken=None, snet=False,
                  starting_backoff=1, tenant_name=None, os_options=None,
-                 auth_version="1", cacert=None, insecure=False):
+                 auth_version="1", cacert=None, insecure=False,
+                 auth_header_user='X-Auth-User',
+                 auth_header_key='X-Auth-Key'):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -962,6 +968,10 @@ class Connection(object):
                            tenant_name, object_storage_url, region_name
         :param insecure: Allow to access insecure keystone server.
                          The keystone's certificate will not be verified.
+        :param auth_header_user: The HTTP header key that contains the user
+                        authentication argument. (default: 'X-Auth-User')
+        :param auth_header_key: The HTTP header key that contains the password
+                        authentication argument. (default: 'X-Auth-Key')
         """
         self.authurl = authurl
         self.user = user
@@ -979,6 +989,8 @@ class Connection(object):
             self.os_options['tenant_name'] = tenant_name
         self.cacert = cacert
         self.insecure = insecure
+        self.auth_header_user = auth_header_user
+        self.auth_header_key = auth_header_key
 
     def get_auth(self):
         return get_auth(self.authurl,
@@ -988,7 +1000,9 @@ class Connection(object):
                         auth_version=self.auth_version,
                         os_options=self.os_options,
                         cacert=self.cacert,
-                        insecure=self.insecure)
+                        insecure=self.insecure,
+                        auth_header_user=self.auth_header_user,
+                        auth_header_key=self.auth_header_key)
 
     def http_connection(self):
         return http_connection(self.url)
